@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<AddinProject appVersion="0.1">
+    <Project platforms="Mac Linux">
+        <AddinFile>AndroidBuildSVG/bin/Release/AndroidBuildSVG.dll</AddinFile>
+        <AddinFile>AndroidBuildSVG/bin/Release/Svg.dll</AddinFile>
+        <BuildFile>AndroidBuildSVG.sln</BuildFile>
+        <BuildConfiguration>Release</BuildConfiguration>
+    </Project>
+</AddinProject>

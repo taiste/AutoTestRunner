@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionModel>
+	<Runtime>
+	</Runtime>
+	<Extension
+		path="/MonoDevelop/Ide/StartupHandlers">
+		<Class
+			id="Taiste.AutoTestRunner.StartupHandler" />
+	</Extension>
+	<Extension
+		path="/MonoDevelop/ProjectModel/Gui/ItemOptionPanels">
+		<Section
+			id="AutoTestRunner"
+			_label="Auto Test Runner">
+	         <Condition id="ItemType" value="Solution" >
+				<Section
+					id="AutoTestRunnerSettings"
+					_label="Settings"
+					fill="true"
+					class="Taiste.AutoTestRunner.SolutionOptions" />
+	        </Condition>
+		</Section>
+	</Extension>
+</ExtensionModel>
