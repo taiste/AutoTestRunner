@@ -7,72 +7,88 @@ using MonoDevelop.Projects;
 using MonoDevelop.UnitTesting;
 using System.Collections.Generic;
 using ICSharpCode.NRefactory.MonoCSharp;
+using System.Threading;
+using System.Reactive;
+using System.Reactive.Linq;
+using System.Threading.Tasks;
+
 namespace Taiste.AutoTestRunner
 {
     public class StartupHandler : CommandHandler
     {
         protected override void Run()
         {
-            IdeApp.Workspace.FileChangedInProject += Workspace_FileChangedInProject;
+            Observable.FromEventPattern<ProjectFileEventHandler, ProjectFileEventArgs>
+                      (e => IdeApp.Workspace.FileChangedInProject += e,
+                       e => IdeApp.Workspace.FileChangedInProject -= e)
+                      .Buffer(TimeSpan.FromMilliseconds(500))
+                      .Where(l => l.Any())
+                      .ObserveOn(SynchronizationContext.Current)
+                      .Select( p => p.Select(i => i.EventArgs))
+                      .Subscribe((l) => RunTests(l), (e) => {
+                System.Diagnostics.Debug.WriteLine(e.ToString());
+            
+            });
 
         }
 
-        async void Workspace_FileChangedInProject(object sender, ProjectFileEventArgs e)
+        async Task RunTests(IEnumerable<ProjectFileEventArgs> l)
         {
-            if (e.Count == 1 && e.First().ProjectFile.FilePath.FileName.ToLower().StartsWith("resource.designer"))
+            if (l.Count() == 1 && l.First().First().ProjectFile.FilePath.FileName.ToLower().StartsWith("resource.designer"))
             {
                 return;
             }
 
-            var rootTest = UnitTestService.FindRootTest(e.CommonProject.ParentSolution.RootFolder);
+            var commonProject = l.Select(r => r.CommonProject).Distinct().First();
+
+            var rootTest = UnitTestService.FindRootTest(commonProject.ParentSolution.RootFolder);
 
             HashSet<UnitTest> tests = new HashSet<UnitTest>();
             var rootGroup = rootTest as UnitTestGroup;
-
-            foreach (var file in e)
+            foreach (var e in l)
             {
-                foreach (var testGroup in rootGroup.Tests)
+                foreach (var file in e)
                 {
-                    if (AddInPreferences.ProjectTestMap.Any(p => p.Project == file.Project.Name && p.Test == testGroup.Name))
+                    foreach (var testGroup in rootGroup.Tests)
                     {
-                        tests.Add(testGroup);
+                        if (AddInPreferences.ProjectTestMap.Any(p => p.Project == file.Project.Name && p.Test == testGroup.Name))
+                        {
+                            tests.Add(testGroup);
+                        }
                     }
                 }
             }
 
-            // Construct a unit test group by calling a protected constructor 
-            // to avoid a null pointer exception related to the test owner object in NUnit. 
-            var cons = typeof(UnitTestGroup)
-                .GetConstructor(System.Reflection.BindingFlags.NonPublic
-                                | System.Reflection.BindingFlags.CreateInstance
-                                | System.Reflection.BindingFlags.Instance,
-                                null,
-                                new[] { typeof(string), typeof(WorkspaceObject) },
-                                null);
-            var coll = cons.Invoke(
-                new object[] {
+            var coll = new CustomTestGroup(
                 "Specified tests",
                 rootTest.OwnerObject
-            }) as UnitTestGroup;
+            );
+
+            var context = new MonoDevelop.Projects.ExecutionContext(
+                Runtime.ProcessService.DefaultExecutionHandler, IdeApp.Workbench.ProgressMonitors.ConsoleFactory, IdeApp.Workspace.ActiveExecutionTarget);
 
             foreach (var test in tests)
             {
+
+                var tmp = new CustomTestGroup("this isnt a real test", test.OwnerObject);
+
+                // We're only calling this so that the owner object gets built properly.
+                // This will fail to run the tests because it tries to find the test
+                // by name again after building the project, in case it was removed.
+                // Since this is a temporary test group, it won't find it and will just return.
+
+                await UnitTestService.RunTest(tmp, context).Task;
                 coll.Tests.Add(test);
             }
 
-            var context = new ExecutionContext(
-                Runtime.ProcessService.DefaultExecutionHandler, IdeApp.Workbench.ProgressMonitors.ConsoleFactory, IdeApp.Workspace.ActiveExecutionTarget);
-
-            // We're only calling this so that the owner object gets built properly.
-            // This will fail to run the tests because it tries to find the test
-            // by name again after building the project, in case it was removed.
-            // Since this is a temporary test group, it won't find it and will just return.
-            await UnitTestService.RunTest(coll, context).Task;
-
             // To get around this, run the tests again but don't build the owner object:
             UnitTestService.RunTest(coll, context, false);
-
         }
+    }
+
+    public class CustomTestGroup : UnitTestGroup
+    {
+        public CustomTestGroup(string name, WorkspaceObject owner) : base(name, owner) { }
     }
 }
 
