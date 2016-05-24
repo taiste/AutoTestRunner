@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="UTF-8" ?>
-<AddinProject appVersion="0.1">
+<AddinProject appVersion="6.0">
     <Project platforms="Mac Linux">
         <AddinFile>AutoTestRunner/bin/Release/AutoTestRunner.dll</AddinFile>
         <BuildFile>AutoTestRunner.sln</BuildFile>
