@@ -30,6 +30,10 @@ namespace Taiste.AutoTestRunner
             
             });
 
+            Observable.FromEventPattern<SolutionEventArgs>(e => IdeApp.ProjectOperations.CurrentSelectedSolutionChanged += e,
+                                        e => IdeApp.ProjectOperations.CurrentSelectedSolutionChanged -= e)
+                      .Subscribe(_ => AddInPreferences.OnSolutionChanged());
+
         }
 
         async Task RunTests(IEnumerable<ProjectFileEventArgs> l)

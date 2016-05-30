@@ -17,6 +17,8 @@ namespace Taiste.AutoTestRunner
 
     public static class AddInPreferences
     {
+
+
         public static List<ProjectTestTuple> ProjectTestMap
         {
             get { return GetConfig().ProjectTestMap; }
@@ -26,6 +28,11 @@ namespace Taiste.AutoTestRunner
 
         private static AddinConfig configuration;
         private static readonly DataContext dataContext = new DataContext();
+
+
+        public static void OnSolutionChanged() {
+            configuration = null;
+        }
 
         static string ConfigFile
         {
@@ -44,6 +51,8 @@ namespace Taiste.AutoTestRunner
                 }
             }
         }
+
+
 
         private static AddinConfig GetConfig()
         {
